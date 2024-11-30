@@ -21,36 +21,54 @@ EBook *Inventory;
 EBorrowedBook *BorrowedBooks;
 Stack ReturnedBooks;
 
+static void Borrow(GtkWidget *widget, gpointer user_data)
+{
+
+}
+
 static void Add(GtkWidget *widget, gpointer user_data)
 {
-    char *string_title = g_strdup(gtk_entry_buffer_get_text(buffer[0]));
+    char *string_Id = g_strdup(gtk_entry_buffer_get_text(buffer[0]));
+    char id[13] = "";
+
+    strcpy(id, string_Id);
+    g_print("Id : %s \n", id);
+
+    char *string_title = g_strdup(gtk_entry_buffer_get_text(buffer[1]));
     char title[51] = "";
 
     strcpy(title, string_title);
     g_print("Title : %s \n", title);
 
-    char *string_author = g_strdup(gtk_entry_buffer_get_text(buffer[1]));
+    char *string_author = g_strdup(gtk_entry_buffer_get_text(buffer[2]));
     char author[51] = "";
 
     strcpy(author, string_author);
     g_print("Author : %s \n", author);
 
-    char *string_publisher = g_strdup(gtk_entry_buffer_get_text(buffer[2]));
-    char publisher[51] = "";
+    Book newBook;
+    strcpy(newBook.Id, id);
+    strcpy(newBook.Title, title);
+    strcpy(newBook.Author, author);
 
-    strcpy(publisher, string_publisher);
-    g_print("Publisher : %s \n", publisher);
+    if(AddBook(&Inventory, newBook))
+    {
+        gtk_label_set_label(GTK_LABEL(insertLabel[0]), "Book Id Already exists !!!");
+        gtk_widget_add_css_class(GTK_WIDGET(insertLabel[0]), "exist");
+        gtk_widget_remove_css_class(GTK_WIDGET(insertLabel[0]), "correct");
+    }
+    else
+    {
+        gtk_label_set_label(GTK_LABEL(insertLabel[0]), "Book added successfully");
+        gtk_widget_add_css_class(GTK_WIDGET(insertLabel[0]), "correct");
+        gtk_widget_remove_css_class(GTK_WIDGET(insertLabel[0]), "exist");
+    }
 
-    char *string_publish_year = g_strdup(gtk_entry_buffer_get_text(buffer[3]));
-    int publish_year = atoi(string_publish_year);
+}
 
-    g_print("Publish Year : %d \n", publish_year);
-
-    char *string_description = g_strdup(gtk_entry_buffer_get_text(buffer[4]));
-    char description[1001] = "";
-
-    strcpy(description, string_description);
-    g_print("Description : %s \n", description);
+static void GoToBorrow(GtkWidget *widget, gpointer user_data)
+{
+    gtk_stack_set_visible_child_name(GTK_STACK(stack), "grid_borrow");
 }
 
 static void GoToAdd(GtkWidget *widget, gpointer user_data)
@@ -61,6 +79,12 @@ static void GoToAdd(GtkWidget *widget, gpointer user_data)
 static void Home(GtkWidget *widget, gpointer user_data)
 {
     gtk_stack_set_visible_child_name(GTK_STACK(stack), "grid_home");
+
+    gtk_entry_buffer_set_text(GTK_ENTRY_BUFFER(buffer[0]), "", 0);
+    gtk_entry_buffer_set_text(GTK_ENTRY_BUFFER(buffer[1]), "", 0);
+    gtk_entry_buffer_set_text(GTK_ENTRY_BUFFER(buffer[2]), "", 0);
+
+    gtk_label_set_text(GTK_LABEL(insertLabel[0]), "");
 }
 
 static void on_activate(GtkApplication *app)
@@ -96,9 +120,9 @@ static void on_activate(GtkApplication *app)
 
     go[0] = gtk_button_new_with_mnemonic("Add a Book");
     go[1] = gtk_button_new_with_mnemonic("Borrow a Book");
-    go[2] = gtk_button_new_with_mnemonic("Update a Task Status");
-    go[3] = gtk_button_new_with_mnemonic("Display Tasks");
-    go[4] = gtk_button_new_with_mnemonic("Search by Priority");
+    go[2] = gtk_button_new_with_mnemonic("Return a Book");
+    go[3] = gtk_button_new_with_mnemonic("Display Recent Books");
+    go[4] = gtk_button_new_with_mnemonic("Display Users Borrow Queue");
 
     homeLabel[0] = gtk_label_new ("");
     homeLabel[1] = gtk_label_new ("");
@@ -116,17 +140,6 @@ static void on_activate(GtkApplication *app)
     gtk_grid_attach (GTK_GRID (grid[0]), GTK_WIDGET(go[3]), 11, 5, 10, 4);
     gtk_grid_attach (GTK_GRID (grid[0]), GTK_WIDGET(go[4]), 1, 9, 20, 4);
 
-    grid[1] = gtk_grid_new();
-
-    gtk_grid_set_column_spacing(GTK_GRID(grid[1]), 10);
-    gtk_grid_set_row_spacing(GTK_GRID(grid[1]), 10);
-
-    gtk_grid_set_row_homogeneous(GTK_GRID(grid[1]), TRUE);
-    gtk_grid_set_column_homogeneous(GTK_GRID(grid[1]), TRUE);
-
-    submit[0] = gtk_button_new_with_mnemonic("Add");
-    g_signal_connect (submit[0], "clicked", G_CALLBACK(Add), NULL);
-
     retour[0] = gtk_button_new_with_mnemonic("Return");
     g_signal_connect (retour[0], "clicked", G_CALLBACK(Home), NULL);
     retour[1] = gtk_button_new_with_mnemonic("Return");
@@ -137,6 +150,17 @@ static void on_activate(GtkApplication *app)
     g_signal_connect (retour[3], "clicked", G_CALLBACK(Home), NULL);
     retour[4] = gtk_button_new_with_mnemonic("Return");
     g_signal_connect (retour[4], "clicked", G_CALLBACK(Home), NULL);
+
+    grid[1] = gtk_grid_new();
+
+    gtk_grid_set_column_spacing(GTK_GRID(grid[1]), 10);
+    gtk_grid_set_row_spacing(GTK_GRID(grid[1]), 10);
+
+    gtk_grid_set_row_homogeneous(GTK_GRID(grid[1]), TRUE);
+    gtk_grid_set_column_homogeneous(GTK_GRID(grid[1]), TRUE);
+
+    submit[0] = gtk_button_new_with_mnemonic("Add");
+    g_signal_connect (submit[0], "clicked", G_CALLBACK(Add), NULL);
 
     buffer[0] = gtk_entry_buffer_new("", -1);
     gtk_entry_buffer_set_max_length(GTK_ENTRY_BUFFER(buffer[0]), 12);
@@ -154,7 +178,7 @@ static void on_activate(GtkApplication *app)
     entry[2] = gtk_entry_new_with_buffer(buffer[2]);
 
     insertLabel[0] = gtk_label_new("");
-    insertLabel[1] = gtk_label_new("ID : : ");
+    insertLabel[1] = gtk_label_new("ID : ");
     gtk_label_set_xalign(GTK_LABEL(insertLabel[1]), 0.0);
     insertLabel[2] = gtk_label_new("Title : ");
     gtk_label_set_xalign(GTK_LABEL(insertLabel[2]), 0.0);
@@ -162,6 +186,7 @@ static void on_activate(GtkApplication *app)
     gtk_label_set_xalign(GTK_LABEL(insertLabel[3]), 0.0);
     insertLabel[4] = gtk_label_new("");
 
+    gtk_widget_add_css_class(GTK_WIDGET(insertLabel[0]), "bold-label");
     gtk_widget_add_css_class(GTK_WIDGET(insertLabel[1]), "bold-label");
     gtk_widget_add_css_class(GTK_WIDGET(insertLabel[2]), "bold-label");
     gtk_widget_add_css_class(GTK_WIDGET(insertLabel[3]), "bold-label");
@@ -179,8 +204,22 @@ static void on_activate(GtkApplication *app)
 
     g_signal_connect (go[0], "clicked", G_CALLBACK(GoToAdd), NULL);
 
+    grid[2] = gtk_grid_new();
+
+    gtk_grid_set_column_spacing(GTK_GRID(grid[2]), 10);
+    gtk_grid_set_row_spacing(GTK_GRID(grid[2]), 10);
+
+    gtk_grid_set_row_homogeneous(GTK_GRID(grid[2]), TRUE);
+    gtk_grid_set_column_homogeneous(GTK_GRID(grid[2]), TRUE);
+
     gtk_stack_add_titled(GTK_STACK(stack), grid[0], "grid_home", "Home");
     gtk_stack_add_titled(GTK_STACK(stack), grid[1], "grid_add", "Add");
+    gtk_stack_add_titled(GTK_STACK(stack), grid[2], "grid_borrow", "Borrow");
+
+    g_signal_connect (go[1], "clicked", G_CALLBACK(GoToBorrow), NULL);
+
+    submit[1] = gtk_button_new_with_mnemonic("Borrow");
+    g_signal_connect (submit[1], "clicked", G_CALLBACK(Borrow), NULL);
 
     gtk_window_present(GTK_WINDOW(window));
 }

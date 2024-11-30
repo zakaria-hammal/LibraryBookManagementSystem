@@ -55,7 +55,7 @@ int AddBook(EBook **L, Book book)
     return 0;
 }
 
-int SearchBook(EBook *L, char Id[51])
+int SearchBook(EBook *L, char Id[13])
 {
     while(L != NULL && strcmp(L->Book.Id, Id) != 0)
     {
@@ -70,22 +70,21 @@ int SearchBook(EBook *L, char Id[51])
     return L->Book.available;
 }
 
-int BorrowBook(EBook **L1, EBorrowedBook **L2, User user, char Id[51])
+int BorrowBook(EBook **L1, EBorrowedBook **L2, User user)
 {
     if(L1 == NULL || L2 == NULL)
     {
         return -1;
     }
 
-    int BookStatus = SearchBook(*L1, Id);
+    int BookStatus = SearchBook(*L1, user.RequestedBookId);
     if(BookStatus == -1)
     {
         return -1;
     }
 
-
     EBook *Q = *L1;
-    while (Q !=NULL && strcmp(Q->Book.Id, Id) != 0)
+    while (Q !=NULL && strcmp(Q->Book.Id, user.RequestedBookId) != 0)
     {
         Q = Q->next;
     }
@@ -105,7 +104,7 @@ int BorrowBook(EBook **L1, EBorrowedBook **L2, User user, char Id[51])
     else
     {
         P = *L2;
-        while (P != NULL && strcmp(P->Book.Id, Id) != 0)
+        while (P != NULL && strcmp(P->Book.Id, user.RequestedBookId) != 0)
         {
             P = P->next;
         }
@@ -116,7 +115,7 @@ int BorrowBook(EBook **L1, EBorrowedBook **L2, User user, char Id[51])
     return BookStatus;
 }
 
-int ReturnBook(EBook **L1, EBorrowedBook **L2, char Id[51], Stack *ReturnedBooks)
+int ReturnBook(EBook **L1, EBorrowedBook **L2, char Id[13], Stack *ReturnedBooks)
 {
     if(L1 == NULL || L2 == NULL)
     {
