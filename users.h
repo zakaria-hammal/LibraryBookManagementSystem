@@ -1,14 +1,16 @@
 typedef struct User User;
 struct User
 {
-    char FirstName[51];
-    char LastName[51];
+    char Id[13];
+    char Name[51];
+    char RequestedBookId[13];
 };
 
 void CopyUser(User *Destination, User Source)
 {
-    strcpy(Destination->FirstName, Source.FirstName);
-    strcpy(Destination->LastName, Source.LastName);
+    strcpy(Destination->Id, Source.Id);
+    strcpy(Destination->Name, Source.Name);
+    strcpy(Destination->RequestedBookId, Source.RequestedBookId);
 }
 
 typedef struct Element* EQueue;

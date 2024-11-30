@@ -1,20 +1,18 @@
 typedef struct Book Book;
 struct Book
 {
+    char Id[13];
     char Title[51];
     char Author[51];
-    char Publisher[51];
-    int PublishYear;
-    char Description[1001];
+    int available;
 };
 
 void CopyBook(Book *B1, Book B2)
 {
-    B1->PublishYear = B2.PublishYear;
+    strcpy(B1->Id, B2.Id);
     strcpy(B1->Title, B2.Title);
     strcpy(B1->Author, B2.Author);
-    strcpy(B1->Publisher, B2.Publisher);
-    strcpy(B1->Description, B2.Description);
+    B1->available = B2.available;
 }
 
 typedef struct Estack* Stack;

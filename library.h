@@ -2,7 +2,6 @@ typedef struct EBook EBook;
 struct EBook
 {
     Book Book;
-    int available;
     EBook* next;
 };
 
@@ -32,7 +31,7 @@ int AddBook(EBook **L, Book book)
     EBook* B = *L;
     while (B != NULL)
     {
-        if (!strcmp(B->Book.Title, book.Title)) {
+        if (!strcmp(B->Book.Id, book.Id)) {
             return 1;
         }
 
@@ -47,7 +46,7 @@ int AddBook(EBook **L, Book book)
         return 1;    
     }
 
-    newBook->available = 1;
+    newBook->Book.available = 1;
     CopyBook(&(newBook->Book), book);
 
     newBook->next = *L;
@@ -56,9 +55,9 @@ int AddBook(EBook **L, Book book)
     return 0;
 }
 
-int SearchBook(EBook *L, char Title[51])
+int SearchBook(EBook *L, char Id[51])
 {
-    while(L != NULL && strcmp(L->Book.Title, Title) != 0)
+    while(L != NULL && strcmp(L->Book.Id, Id) != 0)
     {
         L = L->next;
     }
@@ -68,17 +67,17 @@ int SearchBook(EBook *L, char Title[51])
         return -1;
     }
 
-    return L->available;
+    return L->Book.available;
 }
 
-int BorrowBook(EBook **L1, EBorrowedBook **L2, User user, char Title[51])
+int BorrowBook(EBook **L1, EBorrowedBook **L2, User user, char Id[51])
 {
     if(L1 == NULL || L2 == NULL)
     {
         return -1;
     }
 
-    int BookStatus = SearchBook(*L1, Title);
+    int BookStatus = SearchBook(*L1, Id);
     if(BookStatus == -1)
     {
         return -1;
@@ -86,7 +85,7 @@ int BorrowBook(EBook **L1, EBorrowedBook **L2, User user, char Title[51])
 
 
     EBook *Q = *L1;
-    while (Q !=NULL && strcmp(Q->Book.Title, Title) != 0)
+    while (Q !=NULL && strcmp(Q->Book.Id, Id) != 0)
     {
         Q = Q->next;
     }
@@ -100,13 +99,13 @@ int BorrowBook(EBook **L1, EBorrowedBook **L2, User user, char Title[51])
         InitQueue(&(P->UserQueue));
         P->next = *L2;
         CopyUser(&(P->Borrower), user);
-        Q->available = 0;
+        Q->Book.available = 0;
         *L2 = P;
     }
     else
     {
         P = *L2;
-        while (P != NULL && strcmp(P->Book.Title, Title) != 0)
+        while (P != NULL && strcmp(P->Book.Id, Id) != 0)
         {
             P = P->next;
         }
@@ -117,30 +116,30 @@ int BorrowBook(EBook **L1, EBorrowedBook **L2, User user, char Title[51])
     return BookStatus;
 }
 
-int ReturnBook(EBook **L1, EBorrowedBook **L2, char Title[51], Stack *ReturnedBooks)
+int ReturnBook(EBook **L1, EBorrowedBook **L2, char Id[51], Stack *ReturnedBooks)
 {
     if(L1 == NULL || L2 == NULL)
     {
         return -1;
     }
 
-    int BookStatus = SearchBook(*L1, Title);
+    int BookStatus = SearchBook(*L1, Id);
     if(BookStatus == -1)
     {
         return -1;
     }
 
-    if(!strcmp((*L2)->Book.Title, Title))
+    if(!strcmp((*L2)->Book.Id, Id))
     {
         if(isQEmpty((*L2)->UserQueue))
         {
             EBook *Q = *L1;
-            while (Q !=NULL && strcmp(Q->Book.Title, Title) != 0)
+            while (Q !=NULL && strcmp(Q->Book.Id, Id) != 0)
             {
                 Q = Q->next;
             }
 
-            Q->available = 1;
+            Q->Book.available = 1;
             Push(ReturnedBooks, Q->Book);
 
             EBorrowedBook *P = *L2;
@@ -157,7 +156,7 @@ int ReturnBook(EBook **L1, EBorrowedBook **L2, char Title[51], Stack *ReturnedBo
 
     EBorrowedBook *P = *L2;
 
-    while (P->next != NULL && strcmp(P->next->Book.Title, Title) != 0)
+    while (P->next != NULL && strcmp(P->next->Book.Id, Id) != 0)
     {
         P = P->next;
     }
@@ -167,17 +166,17 @@ int ReturnBook(EBook **L1, EBorrowedBook **L2, char Title[51], Stack *ReturnedBo
         return 1;
     }
 
-    if(!strcmp(P->next->Book.Title, Title))
+    if(!strcmp(P->next->Book.Id, Id))
     {
         if(isQEmpty(P->next->UserQueue))
         {
             EBook *Q = *L1;
-            while (Q !=NULL && strcmp(Q->Book.Title, Title) != 0)
+            while (Q !=NULL && strcmp(Q->Book.Id, Id) != 0)
             {
                 Q = Q->next;
             }
 
-            Q->available = 1;
+            Q->Book.available = 1;
             Push(ReturnedBooks, Q->Book);
 
             EBorrowedBook *K =P->next;
