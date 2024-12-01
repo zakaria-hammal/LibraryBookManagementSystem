@@ -46,7 +46,7 @@ int AddBook(EBook **L, Book book)
         return 1;    
     }
 
-    newBook->Book.available = 1;
+    book.available = 1;
     CopyBook(&(newBook->Book), book);
 
     newBook->next = *L;
@@ -59,6 +59,7 @@ int SearchBook(EBook *L, char Id[13])
 {
     while(L != NULL && strcmp(L->Book.Id, Id) != 0)
     {
+        printf("%s %s\n", L->Book.Id, Id);
         L = L->next;
     }
 
@@ -109,31 +110,47 @@ int BorrowBook(EBook **L1, EBorrowedBook **L2, User user)
             P = P->next;
         }
 
+        if(!strcmp(P->Borrower.Id, user.Id))
+        {
+            return 2;
+        }
+
         Enqueue(&(P->UserQueue), user);
     }
 
-    return BookStatus;
+    return !BookStatus;
 }
 
-int ReturnBook(EBook **L1, EBorrowedBook **L2, char Id[13], Stack *ReturnedBooks)
+int ReturnBook(EBook **L1, EBorrowedBook **L2, char userId[13], char bookId[13], Stack *ReturnedBooks)
 {
     if(L1 == NULL || L2 == NULL)
     {
         return -1;
     }
 
-    int BookStatus = SearchBook(*L1, Id);
+    printf("%s\n", bookId);
+    int BookStatus = SearchBook(*L1, bookId);
     if(BookStatus == -1)
     {
         return -1;
     }
 
-    if(!strcmp((*L2)->Book.Id, Id))
+    if(BookStatus)
     {
+        return 2;
+    }
+
+    if(!strcmp((*L2)->Book.Id, bookId))
+    {
+        if(strcmp((*L2)->Borrower.Id, userId) != 0)
+        {
+            return 1;
+        }
+
         if(isQEmpty((*L2)->UserQueue))
         {
             EBook *Q = *L1;
-            while (Q !=NULL && strcmp(Q->Book.Id, Id) != 0)
+            while (Q !=NULL && strcmp(Q->Book.Id, bookId) != 0)
             {
                 Q = Q->next;
             }
@@ -155,7 +172,7 @@ int ReturnBook(EBook **L1, EBorrowedBook **L2, char Id[13], Stack *ReturnedBooks
 
     EBorrowedBook *P = *L2;
 
-    while (P->next != NULL && strcmp(P->next->Book.Id, Id) != 0)
+    while (P->next != NULL && strcmp(P->next->Book.Id, bookId) != 0)
     {
         P = P->next;
     }
@@ -165,12 +182,17 @@ int ReturnBook(EBook **L1, EBorrowedBook **L2, char Id[13], Stack *ReturnedBooks
         return 1;
     }
 
-    if(!strcmp(P->next->Book.Id, Id))
+    if(!strcmp(P->next->Book.Id, bookId))
     {
+        if(strcmp(P->Borrower.Id, userId) != 0)
+        {
+            return 1;
+        }
+
         if(isQEmpty(P->next->UserQueue))
         {
             EBook *Q = *L1;
-            while (Q !=NULL && strcmp(Q->Book.Id, Id) != 0)
+            while (Q !=NULL && strcmp(Q->Book.Id, bookId) != 0)
             {
                 Q = Q->next;
             }
