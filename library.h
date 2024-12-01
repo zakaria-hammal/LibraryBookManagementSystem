@@ -120,7 +120,7 @@ int BorrowBook(EBook **L1, EBorrowedBook **L2, User user)
     return !BookStatus;
 }
 
-int ReturnBook(EBook **L1, EBorrowedBook **L2, char userId[13], char bookId[13], Stack *ReturnedBooks)
+int ReturnBook(EBook **L1, EBorrowedBook **L2, char userId[13], char bookId[13], Stack *ReturnedBooks, int *stackSize)
 {
     if(L1 == NULL || L2 == NULL)
     {
@@ -160,11 +160,13 @@ int ReturnBook(EBook **L1, EBorrowedBook **L2, char userId[13], char bookId[13],
             *L2 = (*L2)->next;
             free(P);
 
+            *stackSize += 1;
             return 0;
         }
 
         Dequeue(&((*L2)->UserQueue), &((*L2)->Borrower));
 
+        *stackSize += 1;
         return 0;
     }
 
@@ -202,11 +204,13 @@ int ReturnBook(EBook **L1, EBorrowedBook **L2, char userId[13], char bookId[13],
             P->next= K->next;
             free(K);
 
+            *stackSize += 1;
             return 0;
         }
 
         Dequeue(&(P->next->UserQueue), &(P->next->Borrower));
 
+        *stackSize += 1;
         return 0;
     }
 }

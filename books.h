@@ -35,8 +35,8 @@ void Push(Stack *S, Book x)
 void Pop(Stack *S, Book *x)
 {
     Stack V;
-    CopyBook(x, V->Data);
     V=*S;
+    CopyBook(x, V->Data);
     *S=(*S)->Next;
     free(V);
 }

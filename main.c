@@ -22,10 +22,16 @@ GtkEntryBuffer *returnBuffer[2];
 GtkWidget *addLabel[6];
 GtkWidget *borrowLabel[6];
 GtkWidget *returnLabel[5];
+GtkWidget *scrolled_window[2];
+GtkWidget **stackLabel;
+GtkWidget *headLabel[2];
+GtkWidget *bottomLabel[2];
 
 EBook *Inventory;
 EBorrowedBook *BorrowedBooks;
 Stack ReturnedBooks;
+
+int stackSize;
 
 static void Return(GtkWidget *widget, gpointer user_data)
 {
@@ -39,7 +45,7 @@ static void Return(GtkWidget *widget, gpointer user_data)
 
     strcpy(book_id, string_book_id);
 
-    int status = ReturnBook(&Inventory, &BorrowedBooks, user_id, book_id, &ReturnedBooks);
+    int status = ReturnBook(&Inventory, &BorrowedBooks, user_id, book_id, &ReturnedBooks, &stackSize);
 
     EBook *P = Inventory;
 
@@ -173,6 +179,60 @@ static void Add(GtkWidget *widget, gpointer user_data)
 
 }
 
+static void GoToStack(GtkWidget *widget, gpointer user_data)
+{
+    gtk_stack_set_visible_child_name(GTK_STACK(stack), "grid_stack");
+
+    bottomLabel[0] = gtk_label_new_with_mnemonic("\n");
+
+    if(isSEmpty(ReturnedBooks))
+    {
+        stackLabel = malloc(sizeof(GtkWidget*));
+        *stackLabel = gtk_label_new_with_mnemonic("No Returned Books Yet");
+        gtk_widget_add_css_class(GTK_WIDGET(*stackLabel), "bold-label");
+        gtk_label_set_xalign(GTK_LABEL(*stackLabel), 0.0);
+        gtk_box_append(GTK_BOX(box[0]), GTK_WIDGET(*stackLabel));
+        g_print("Zero\n");
+        return;
+    }
+
+    stackLabel = malloc(stackSize * sizeof(GtkWidget*));
+    char stat[200] = "";
+
+    printf("%d\n", stackSize);
+
+    Stack T;
+    InitStack(&T);
+
+    Book book;
+
+    for (int i = 0; i < stackSize; i++)
+    {
+        g_print("%d\n", i);
+        Pop(&ReturnedBooks, &book);
+        Push(&T, book);
+        strcpy(stat, "Book Id : ");
+        strcat(stat, book.Id);
+        strcat(stat, "\nTitle : ");
+        strcat(stat, book.Title);
+        strcat(stat, "\nAuthor : ");
+        strcat(stat, book.Author);
+        strcat(stat, "\n");
+        stackLabel[i] = gtk_label_new_with_mnemonic(stat);
+        gtk_widget_add_css_class(GTK_WIDGET(stackLabel[i]), "bold-label");
+        gtk_label_set_xalign(GTK_LABEL(stackLabel[i]), 0.0);
+        gtk_box_append(GTK_BOX(box[0]), GTK_WIDGET(stackLabel[i]));
+    }
+
+    gtk_box_append(GTK_BOX(box[0]), GTK_WIDGET(bottomLabel[0]));
+    
+    while(!isSEmpty(T))
+    {
+        Pop(&T, &book);
+        Push(&ReturnedBooks, book);
+    }
+}
+
 static void GoToReturn(GtkWidget *widget, gpointer user_data)
 {
     gtk_stack_set_visible_child_name(GTK_STACK(stack), "grid_return");
@@ -191,6 +251,27 @@ static void GoToAdd(GtkWidget *widget, gpointer user_data)
 static void Home(GtkWidget *widget, gpointer user_data)
 {
     gtk_stack_set_visible_child_name(GTK_STACK(stack), "grid_home");
+
+    if(stackLabel != NULL)
+    {
+        if(isSEmpty(ReturnedBooks))
+        {
+            gtk_box_remove(GTK_BOX(box[0]), GTK_WIDGET(stackLabel[0]));
+            free(stackLabel);
+            stackLabel = NULL;
+        }
+        else
+        {
+            for (int i = 0; i < stackSize; i++)
+            {
+                gtk_box_remove(GTK_BOX(box[0]), GTK_WIDGET(stackLabel[i]));
+            }
+
+            free(stackLabel);
+            stackLabel = NULL;
+        }
+        
+    }
 
     gtk_entry_buffer_set_text(GTK_ENTRY_BUFFER(addBuffer[0]), "", 0);
     gtk_entry_buffer_set_text(GTK_ENTRY_BUFFER(addBuffer[1]), "", 0);
@@ -214,7 +295,7 @@ static void on_activate(GtkApplication *app)
 {
     window = gtk_application_window_new(app);
     gtk_window_set_title (GTK_WINDOW (window), "Library Book Management System");
-    gtk_window_set_default_size (GTK_WINDOW (window), 800, 800);
+    gtk_window_set_default_size (GTK_WINDOW (window), 800, 900);
 
     stack = gtk_stack_new();
     gtk_stack_set_transition_type(GTK_STACK(stack), GTK_STACK_TRANSITION_TYPE_SLIDE_LEFT_RIGHT);
@@ -229,7 +310,7 @@ static void on_activate(GtkApplication *app)
                                         "entry { min-height: 50px; font-size: 20px; font-weight: 600; padding: 10px; border-radius: 10px;}"
                                         ".exist { color: red;}"
                                         ".correct { color: green;}"
-                                        ".notExist { color: yellow;}"
+                                        ".notExist { color: orange;}"
                                         ".title-label { color: blue;font-size: 25px; font-weight: bold;}");
     GdkDisplay *display = gdk_display_get_default();
     gtk_style_context_add_provider_for_display(display, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
@@ -428,10 +509,30 @@ static void on_activate(GtkApplication *app)
     gtk_grid_attach(GTK_GRID(grid[3]), GTK_WIDGET(retour[2]), 6, 6, 5, 1);
     gtk_grid_attach(GTK_GRID(grid[3]), GTK_WIDGET(returnLabel[4]), 0, 7, 12, 1);
 
+    g_signal_connect (go[3], "clicked", G_CALLBACK(GoToStack), NULL);
+
+    box[0] = gtk_box_new(GTK_ORIENTATION_VERTICAL, 20);
+    gtk_widget_set_halign(box[0], GTK_ALIGN_CENTER);
+    gtk_widget_set_valign(box[0], GTK_ALIGN_CENTER);
+
+    headLabel[0] = gtk_label_new_with_mnemonic("\n");
+
+    gtk_box_append(GTK_BOX(box[0]), headLabel[0]);
+    gtk_box_append(GTK_BOX(box[0]), retour[3]);
+
+    scrolled_window[0] = gtk_scrolled_window_new();
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolled_window[0]), 
+                                   GTK_POLICY_NEVER,
+                                   GTK_POLICY_AUTOMATIC
+    );
+
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scrolled_window[0]), box[0]);
+
     gtk_stack_add_titled(GTK_STACK(stack), grid[0], "grid_home", "Home");
     gtk_stack_add_titled(GTK_STACK(stack), grid[1], "grid_add", "Add");
     gtk_stack_add_titled(GTK_STACK(stack), grid[2], "grid_borrow", "Borrow");
     gtk_stack_add_titled(GTK_STACK(stack), grid[3], "grid_return", "Return");
+    gtk_stack_add_titled(GTK_STACK(stack), scrolled_window[0], "grid_stack", "Stack");
 
     gtk_window_present(GTK_WINDOW(window));
 }
@@ -444,6 +545,10 @@ int main(int argc, char* argv[])
     Inventory = NULL;
     BorrowedBooks = NULL;
     InitStack(&ReturnedBooks);
+
+    stackLabel = NULL;
+
+    stackSize = 0;
 
     app = gtk_application_new ("stackof.holger.entry", G_APPLICATION_DEFAULT_FLAGS);
 
