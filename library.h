@@ -59,7 +59,6 @@ int SearchBook(EBook *L, char Id[13])
 {
     while(L != NULL && strcmp(L->Book.Id, Id) != 0)
     {
-        printf("%s %s\n", L->Book.Id, Id);
         L = L->next;
     }
 
@@ -128,7 +127,6 @@ int ReturnBook(EBook **L1, EBorrowedBook **L2, char userId[13], char bookId[13],
         return -1;
     }
 
-    printf("%s\n", bookId);
     int BookStatus = SearchBook(*L1, bookId);
     if(BookStatus == -1)
     {
