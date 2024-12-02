@@ -3,39 +3,6 @@
 #include <gtk/gtk.h>
 #include "library.h"
 
-GtkWidget *window;
-GtkWidget *stack;
-GtkWidget *grid[4];
-GtkWidget *box[2];
-GtkWidget *go[5];
-GtkWidget *retour[5];
-GtkWidget *submit[5];
-GtkWidget *homeLabel[4];
-GtkWidget *addEntry[3];
-GtkEntryBuffer *addBuffer[3];
-GtkWidget *borrowEntry[3];
-GtkEntryBuffer *borrowBuffer[3];
-GtkWidget *returnEntry[2];
-GtkEntryBuffer *returnBuffer[2];
-GtkWidget *addLabel[6];
-GtkWidget *borrowLabel[6];
-GtkWidget *returnLabel[5];
-GtkWidget *scrolled_window[2];
-GtkWidget **stackLabel;
-GtkWidget **queueLabel;
-GtkWidget *headLabel[2];
-GtkWidget *bottomLabel[2];
-GtkWidget **tempLabel;
-GtkWidget *queueEntry;
-GtkEntryBuffer *queueBuffer;
-
-EBook *Inventory;
-EBorrowedBook *BorrowedBooks;
-Stack ReturnedBooks;
-
-int stackSize;
-int queueSize;
-
 int AddBook(EBook **L, Book book)
 {
     if (L == NULL)
@@ -298,6 +265,40 @@ int ReturnBook(EBook **L1, EBorrowedBook **L2, char userId[13], char bookId[13],
         return 0;
     }
 }
+
+
+GtkWidget *window;
+GtkWidget *stack;
+GtkWidget *grid[4];
+GtkWidget *box[2];
+GtkWidget *go[5];
+GtkWidget *retour[5];
+GtkWidget *submit[5];
+GtkWidget *homeLabel[4];
+GtkWidget *addEntry[3];
+GtkEntryBuffer *addBuffer[3];
+GtkWidget *borrowEntry[3];
+GtkEntryBuffer *borrowBuffer[3];
+GtkWidget *returnEntry[2];
+GtkEntryBuffer *returnBuffer[2];
+GtkWidget *addLabel[6];
+GtkWidget *borrowLabel[6];
+GtkWidget *returnLabel[5];
+GtkWidget *scrolled_window[2];
+GtkWidget **stackLabel;
+GtkWidget **queueLabel;
+GtkWidget *headLabel[2];
+GtkWidget *bottomLabel[2];
+GtkWidget **tempLabel;
+GtkWidget *queueEntry;
+GtkEntryBuffer *queueBuffer;
+
+EBook *Inventory;
+EBorrowedBook *BorrowedBooks;
+Stack ReturnedBooks;
+
+int stackSize;
+int queueSize;
 
 static void Display(GtkWidget *widget, gpointer user_data)
 {
