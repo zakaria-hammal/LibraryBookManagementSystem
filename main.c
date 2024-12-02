@@ -1,8 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <gtk/gtk.h>
-#include "books.h"
-#include "users.h"
 #include "library.h"
 
 GtkWidget *window;
@@ -24,14 +22,403 @@ GtkWidget *borrowLabel[6];
 GtkWidget *returnLabel[5];
 GtkWidget *scrolled_window[2];
 GtkWidget **stackLabel;
+GtkWidget **queueLabel;
 GtkWidget *headLabel[2];
 GtkWidget *bottomLabel[2];
+GtkWidget **tempLabel;
+GtkWidget *queueEntry;
+GtkEntryBuffer *queueBuffer;
 
 EBook *Inventory;
 EBorrowedBook *BorrowedBooks;
 Stack ReturnedBooks;
 
 int stackSize;
+int queueSize;
+
+int AddBook(EBook **L, Book book)
+{
+    if (L == NULL)
+    {
+        return 1;
+    }
+
+    EBook* B = *L;
+    while (B != NULL)
+    {
+        if (!strcmp(B->Book.Id, book.Id)) {
+            return 1;
+        }
+
+        B = B->next;
+    }
+    
+    
+    EBook* newBook = malloc(sizeof(EBook));
+    if(newBook == NULL)
+    {
+        perror("Memory allocation failed");
+        return 1;    
+    }
+
+    book.available = 1;
+    CopyBook(&(newBook->Book), book);
+
+    newBook->next = *L;
+    *L = newBook;
+
+    return 0;
+}
+
+int SearchBook(EBook *L, char Id[13])
+{
+    while(L != NULL && strcmp(L->Book.Id, Id) != 0)
+    {
+        L = L->next;
+    }
+
+    if(L == NULL)
+    {
+        return -1;
+    }
+
+    return L->Book.available;
+}
+
+int BorrowBook(EBook **L1, EBorrowedBook **L2, User user)
+{
+    if(L1 == NULL || L2 == NULL)
+    {
+        return -1;
+    }
+
+    int BookStatus = SearchBook(*L1, user.RequestedBookId);
+    if(BookStatus == -1)
+    {
+        return -1;
+    }
+
+    EBook *Q = *L1;
+    while (Q !=NULL && strcmp(Q->Book.Id, user.RequestedBookId) != 0)
+    {
+        Q = Q->next;
+    }
+
+    EBorrowedBook *P;
+
+    if(BookStatus)
+    {
+        P = malloc(sizeof(EBorrowedBook));
+        CopyBook(&(P->Book), Q->Book);
+        InitQueue(&(P->UserQueue));
+        P->next = *L2;
+        CopyUser(&(P->Borrower), user);
+        Q->Book.available = 0;
+        *L2 = P;
+    }
+    else
+    {
+        P = *L2;
+        while (P != NULL && strcmp(P->Book.Id, user.RequestedBookId) != 0)
+        {
+            P = P->next;
+        }
+
+        if(!strcmp(P->Borrower.Id, user.Id))
+        {
+            return 2;
+        }
+
+        Queue Q;
+        User usr;
+        InitQueue(&Q);
+        int c = 0;
+
+        while (!isQEmpty(P->UserQueue))
+        {
+            Dequeue(&(P->UserQueue), &usr);
+            Enqueue(&Q, usr);
+
+            if(!strcmp(user.Id, usr.Id))
+            {
+                c++;
+            }
+        }
+        
+        P->UserQueue = Q;
+
+        if(c > 0)
+        {
+            return 3;
+        }
+
+        Enqueue(&(P->UserQueue), user);
+    }
+
+    return !BookStatus;
+}
+
+int ReturnBook(EBook **L1, EBorrowedBook **L2, char userId[13], char bookId[13], Stack *RBooks, int *sSize)
+{
+    if(L1 == NULL || L2 == NULL)
+    {
+        return -1;
+    }
+
+    int BookStatus = SearchBook(*L1, bookId);
+    if(BookStatus == -1)
+    {
+        return -1;
+    }
+
+    if(BookStatus)
+    {
+        return 2;
+    }
+
+    if(!strcmp((*L2)->Book.Id, bookId))
+    {
+        if(strcmp((*L2)->Borrower.Id, userId) != 0)
+        {
+            return 1;
+        }
+
+        if(isQEmpty((*L2)->UserQueue))
+        {
+            EBook *Q = *L1;
+            while (Q !=NULL && strcmp(Q->Book.Id, bookId) != 0)
+            {
+                Q = Q->next;
+            }
+
+            Q->Book.available = 1;
+
+            EBorrowedBook *P = *L2;
+            *L2 = (*L2)->next;
+            free(P);
+
+            Stack S;
+            InitStack(&S);
+
+            Book book;
+
+            while(!isSEmpty(*RBooks))
+            {
+                Pop(RBooks, &book);
+
+                if(strcmp(bookId, book.Id) != 0)
+                {
+                    Push(&S, book);
+                }
+            }
+
+            *sSize = 0;
+            while(!isSEmpty(S))
+            {
+                Pop(&S, &book);
+                Push(RBooks, book);
+                *sSize++;
+            }
+
+            Push(RBooks, Q->Book);
+            *sSize += 1;
+
+            return 0;
+        }
+
+        Dequeue(&((*L2)->UserQueue), &((*L2)->Borrower));
+
+        *sSize += 1;
+        return 0;
+    }
+
+    EBorrowedBook *P = *L2;
+
+    while (P->next != NULL && strcmp(P->next->Book.Id, bookId) != 0)
+    {
+        P = P->next;
+    }
+
+    if(P->next == NULL)
+    {
+        return 1;
+    }
+
+    if(!strcmp(P->next->Book.Id, bookId))
+    {
+        if(strcmp(P->Borrower.Id, userId) != 0)
+        {
+            return 1;
+        }
+
+        if(isQEmpty(P->next->UserQueue))
+        {
+            EBook *Q = *L1;
+            while (Q !=NULL && strcmp(Q->Book.Id, bookId) != 0)
+            {
+                Q = Q->next;
+            }
+
+            Q->Book.available = 1;
+
+            Stack S;
+            InitStack(&S);
+
+            Book book;
+
+            while(!isSEmpty(*RBooks))
+            {
+                Pop(RBooks, &book);
+
+                if(strcmp(bookId, book.Id) != 0)
+                {
+                    Push(&S, book);
+                }
+            }
+
+            *sSize = 0;
+            while(!isSEmpty(S))
+            {
+                Pop(&S, &book);
+                Push(RBooks, book);
+                *sSize++;
+            }
+
+            Push(RBooks, Q->Book);
+
+            EBorrowedBook *K =P->next;
+            P->next= K->next;
+            free(K);
+
+            *sSize++;
+            return 0;
+        }
+
+        Dequeue(&(P->next->UserQueue), &(P->next->Borrower));
+
+        return 0;
+    }
+}
+
+static void Display(GtkWidget *widget, gpointer user_data)
+{
+    if(tempLabel != NULL)
+    {
+        gtk_box_remove(GTK_BOX(box[1]), *tempLabel);
+
+        free(tempLabel);
+        tempLabel = NULL;
+
+        gtk_box_remove(GTK_BOX(box[1]), GTK_WIDGET(bottomLabel[1]));
+    }
+
+    if(queueLabel != NULL)
+    {
+        for (int i = 0; i < queueSize; i++)
+        {
+            gtk_box_remove(GTK_BOX(box[1]), queueLabel[i]);
+        }
+        
+        free(queueLabel);
+        queueLabel = NULL;
+
+        gtk_box_remove(GTK_BOX(box[1]), GTK_WIDGET(bottomLabel[1]));
+    }
+    
+    queueSize = 0;
+    char *string_book_id = g_strdup(gtk_entry_buffer_get_text(queueBuffer));
+    char book_id[13] = "";
+
+    strcpy(book_id, string_book_id);
+
+    EBook *P = Inventory;
+
+    while (P != NULL && strcmp(P->Book.Id, book_id) != 0)
+    {
+        P = P->next;
+    }
+
+    bottomLabel[1] = gtk_label_new_with_mnemonic("\n");
+    
+    if(P == NULL)
+    {
+        tempLabel = malloc(sizeof(GtkWidget*));
+        *tempLabel = gtk_label_new_with_mnemonic("This Book does not exist !!!\n");
+        gtk_widget_add_css_class(GTK_WIDGET(*tempLabel), "bold-label");
+        gtk_widget_add_css_class(GTK_WIDGET(*tempLabel), "exist");
+        gtk_label_set_xalign(GTK_LABEL(*tempLabel), 0.0);
+        gtk_box_append(GTK_BOX(box[1]), GTK_WIDGET(*tempLabel));
+        gtk_box_append(GTK_BOX(box[1]), GTK_WIDGET(bottomLabel[1]));
+        return;
+    }
+
+    if(P->Book.available)
+    {
+        tempLabel = malloc(sizeof(GtkWidget*));
+        *tempLabel = gtk_label_new_with_mnemonic("This Book is available\n");
+        gtk_widget_add_css_class(GTK_WIDGET(*tempLabel), "bold-label");
+        gtk_widget_add_css_class(GTK_WIDGET(*tempLabel), "correct");
+        gtk_label_set_xalign(GTK_LABEL(*tempLabel), 0.0);
+        gtk_box_append(GTK_BOX(box[1]), GTK_WIDGET(*tempLabel));
+        gtk_box_append(GTK_BOX(box[1]), GTK_WIDGET(bottomLabel[1]));
+        return;
+    }
+
+    EBorrowedBook *borrowed = BorrowedBooks;
+
+    while (borrowed != NULL && strcmp(borrowed->Book.Id, book_id) != 0)
+    {
+        borrowed = borrowed->next;
+    }
+
+    if(borrowed == NULL)
+    {
+        return;
+    }
+
+    Queue T;
+    InitQueue(&T);
+
+    User user;
+
+    if(isQEmpty(borrowed->UserQueue))
+    {
+        tempLabel = malloc(sizeof(GtkWidget*));
+        *tempLabel = gtk_label_new_with_mnemonic("This Book is borrowed but it's queue is empty\n");
+        gtk_widget_add_css_class(GTK_WIDGET(*tempLabel), "bold-label");
+        gtk_widget_add_css_class(GTK_WIDGET(*tempLabel), "notExist");
+        gtk_label_set_xalign(GTK_LABEL(*tempLabel), 0.0);
+        gtk_box_append(GTK_BOX(box[1]), GTK_WIDGET(*tempLabel));
+        gtk_box_append(GTK_BOX(box[1]), GTK_WIDGET(bottomLabel[1]));
+        return;
+    }
+
+    while (!isQEmpty(borrowed->UserQueue))
+    {
+        Dequeue(&(borrowed->UserQueue), &user);
+        Enqueue(&T, user);
+        queueSize += 1;
+    }
+
+    queueLabel = malloc(queueSize * sizeof(GtkWidget*));
+    char stat[100] = "";
+
+    for (int i = 0; i < queueSize; i++)
+    {
+        Dequeue(&T, &user);
+        Enqueue(&(borrowed->UserQueue), user);
+        strcpy(stat, "\nUser Id :");
+        strcat(stat, user.Id);
+        strcat(stat, "\nUser name :");
+        strcat(stat, user.Name);
+        queueLabel[i] = gtk_label_new_with_mnemonic(stat);
+        gtk_widget_add_css_class(GTK_WIDGET(queueLabel[i]), "bold-label");
+        gtk_label_set_xalign(GTK_LABEL(queueLabel[i]), 0.0);
+        gtk_box_append(GTK_BOX(box[1]), GTK_WIDGET(queueLabel[i]));
+    }
+
+    gtk_box_append(GTK_BOX(box[1]), GTK_WIDGET(bottomLabel[1]));
+}
 
 static void Return(GtkWidget *widget, gpointer user_data)
 {
@@ -123,6 +510,13 @@ static void Borrow(GtkWidget *widget, gpointer user_data)
         gtk_widget_remove_css_class(GTK_WIDGET(borrowLabel[4]), "correct");
         gtk_widget_remove_css_class(GTK_WIDGET(borrowLabel[4]), "notExist");
     }
+    else if(status == 3)
+    {
+        gtk_label_set_label(GTK_LABEL(borrowLabel[4]), "Book has not been returned yet\nYou are still in the queue");
+        gtk_widget_add_css_class(GTK_WIDGET(borrowLabel[4]), "notExist");
+        gtk_widget_remove_css_class(GTK_WIDGET(borrowLabel[4]), "correct");
+        gtk_widget_remove_css_class(GTK_WIDGET(borrowLabel[4]), "exist");
+    }
     else if(status)
     {
         gtk_label_set_label(GTK_LABEL(borrowLabel[4]), "Book Already Taken\nYou are added to the Queue");
@@ -179,6 +573,11 @@ static void Add(GtkWidget *widget, gpointer user_data)
 
 }
 
+static void GoToQueue(GtkWidget *widget, gpointer user_data)
+{
+    gtk_stack_set_visible_child_name(GTK_STACK(stack), "grid_queue");
+}
+
 static void GoToStack(GtkWidget *widget, gpointer user_data)
 {
     gtk_stack_set_visible_child_name(GTK_STACK(stack), "grid_stack");
@@ -188,10 +587,11 @@ static void GoToStack(GtkWidget *widget, gpointer user_data)
     if(isSEmpty(ReturnedBooks))
     {
         stackLabel = malloc(sizeof(GtkWidget*));
-        *stackLabel = gtk_label_new_with_mnemonic("No Returned Books Yet");
+        *stackLabel = gtk_label_new_with_mnemonic("\nNo Returned Books Yet");
         gtk_widget_add_css_class(GTK_WIDGET(*stackLabel), "bold-label");
         gtk_label_set_xalign(GTK_LABEL(*stackLabel), 0.0);
         gtk_box_append(GTK_BOX(box[0]), GTK_WIDGET(*stackLabel));
+        gtk_box_append(GTK_BOX(box[0]), GTK_WIDGET(bottomLabel[0]));
         g_print("Zero\n");
         return;
     }
@@ -211,7 +611,7 @@ static void GoToStack(GtkWidget *widget, gpointer user_data)
         g_print("%d\n", i);
         Pop(&ReturnedBooks, &book);
         Push(&T, book);
-        strcpy(stat, "Book Id : ");
+        strcpy(stat, "\nBook Id : ");
         strcat(stat, book.Id);
         strcat(stat, "\nTitle : ");
         strcat(stat, book.Title);
@@ -252,6 +652,29 @@ static void Home(GtkWidget *widget, gpointer user_data)
 {
     gtk_stack_set_visible_child_name(GTK_STACK(stack), "grid_home");
 
+    if(tempLabel != NULL)
+    {
+        gtk_box_remove(GTK_BOX(box[1]), *tempLabel);
+
+        free(tempLabel);
+        tempLabel = NULL;
+
+        gtk_box_remove(GTK_BOX(box[1]), GTK_WIDGET(bottomLabel[1]));
+    }
+
+    if(queueLabel != NULL)
+    {
+        for (int i = 0; i < queueSize; i++)
+        {
+            gtk_box_remove(GTK_BOX(box[1]), queueLabel[i]);
+        }
+        
+        free(queueLabel);
+        queueLabel = NULL;
+
+        gtk_box_remove(GTK_BOX(box[1]), GTK_WIDGET(bottomLabel[1]));
+    }
+
     if(stackLabel != NULL)
     {
         if(isSEmpty(ReturnedBooks))
@@ -271,6 +694,7 @@ static void Home(GtkWidget *widget, gpointer user_data)
             stackLabel = NULL;
         }
         
+        gtk_box_remove(GTK_BOX(box[0]), GTK_WIDGET(bottomLabel[0]));
     }
 
     gtk_entry_buffer_set_text(GTK_ENTRY_BUFFER(addBuffer[0]), "", 0);
@@ -289,6 +713,8 @@ static void Home(GtkWidget *widget, gpointer user_data)
     gtk_entry_buffer_set_text(GTK_ENTRY_BUFFER(returnBuffer[1]), "", 0);
 
     gtk_label_set_text(GTK_LABEL(returnLabel[3]), "");
+
+    gtk_entry_buffer_set_text(GTK_ENTRY_BUFFER(queueBuffer), "", 0);
 }
 
 static void on_activate(GtkApplication *app)
@@ -528,11 +954,42 @@ static void on_activate(GtkApplication *app)
 
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scrolled_window[0]), box[0]);
 
+    g_signal_connect (go[4], "clicked", G_CALLBACK(GoToQueue), NULL);
+
+    box[1] = gtk_box_new(GTK_ORIENTATION_VERTICAL, 20);
+    gtk_widget_set_halign(box[1], GTK_ALIGN_CENTER);
+    gtk_widget_set_valign(box[1], GTK_ALIGN_CENTER);
+
+    headLabel[1] = gtk_label_new_with_mnemonic("\nBook Id :");
+    gtk_widget_add_css_class(GTK_WIDGET(headLabel[1]), "bold-label");
+
+    queueBuffer = gtk_entry_buffer_new("", -1);
+    gtk_entry_buffer_set_max_length(GTK_ENTRY_BUFFER(queueBuffer), 12);
+
+    queueEntry = gtk_entry_new_with_buffer(queueBuffer);
+
+    submit[3] = gtk_button_new_with_mnemonic("Display");
+    g_signal_connect (submit[3], "clicked", G_CALLBACK(Display), NULL);
+
+    gtk_box_append(GTK_BOX(box[1]), retour[4]);
+    gtk_box_append(GTK_BOX(box[1]), headLabel[1]);
+    gtk_box_append(GTK_BOX(box[1]), queueEntry);
+    gtk_box_append(GTK_BOX(box[1]), submit[3]);
+
+    scrolled_window[1] = gtk_scrolled_window_new();
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolled_window[1]), 
+                                   GTK_POLICY_NEVER,
+                                   GTK_POLICY_AUTOMATIC
+    );
+
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scrolled_window[1]), box[1]);
+
     gtk_stack_add_titled(GTK_STACK(stack), grid[0], "grid_home", "Home");
     gtk_stack_add_titled(GTK_STACK(stack), grid[1], "grid_add", "Add");
     gtk_stack_add_titled(GTK_STACK(stack), grid[2], "grid_borrow", "Borrow");
     gtk_stack_add_titled(GTK_STACK(stack), grid[3], "grid_return", "Return");
     gtk_stack_add_titled(GTK_STACK(stack), scrolled_window[0], "grid_stack", "Stack");
+    gtk_stack_add_titled(GTK_STACK(stack), scrolled_window[1], "grid_queue", "Queue");
 
     gtk_window_present(GTK_WINDOW(window));
 }
@@ -547,8 +1004,11 @@ int main(int argc, char* argv[])
     InitStack(&ReturnedBooks);
 
     stackLabel = NULL;
+    queueLabel = NULL;
+    tempLabel = NULL;
 
     stackSize = 0;
+    queueSize = 0;
 
     app = gtk_application_new ("stackof.holger.entry", G_APPLICATION_DEFAULT_FLAGS);
 
