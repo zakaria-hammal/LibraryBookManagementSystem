@@ -3,6 +3,8 @@
 #include <gtk/gtk.h>
 #include "library.h"
 
+FILE *file;
+
 int AddBook(EBook **L, Book book)
 {
     if (L == NULL)
@@ -33,6 +35,10 @@ int AddBook(EBook **L, Book book)
 
     newBook->next = *L;
     *L = newBook;
+
+    file = fopen("books.dat", "ab");
+    fwrite(newBook, sizeof(Book), 1, file);
+    fclose(file);
 
     return 0;
 }
@@ -299,6 +305,39 @@ Stack ReturnedBooks;
 
 int stackSize;
 int queueSize;
+
+static void on_app_shutdown(GApplication *app, gpointer user_data) 
+{
+    EBook *eBook;
+    EBorrowedBook *eBorrowedBook;
+    Book book;
+    User user;
+
+    while(!isSEmpty(ReturnedBooks))
+    {
+        Pop(&ReturnedBooks, &book);
+    }
+
+    while(Inventory != NULL)
+    {
+        eBook = Inventory;
+        Inventory = Inventory->next;
+        free(eBook);
+    }
+
+    while (BorrowedBooks != NULL)
+    {
+        eBorrowedBook = BorrowedBooks;
+        BorrowedBooks = BorrowedBooks->next;
+        while(!isQEmpty(eBorrowedBook->UserQueue))
+        {
+            Dequeue(&(eBorrowedBook->UserQueue), &user);
+        }
+
+        free(eBorrowedBook);
+    }
+    
+}
 
 static void Display(GtkWidget *widget, gpointer user_data)
 {
@@ -1007,12 +1046,35 @@ int main(int argc, char* argv[])
     queueLabel = NULL;
     tempLabel = NULL;
 
+    file = fopen("books.dat", "rb");
+
+    if (file == NULL) {
+        perror("Error opening file");
+        return 1;
+    }
+
+    Book fileBook;
+
+    EBook *P;
+
+    while (fread(&fileBook, sizeof(Book), 1, file) == 1)
+    {
+        P = malloc(sizeof(EBook));
+        CopyBook(&(P->Book), fileBook);
+        P->next = Inventory;
+        Inventory = P;
+    }
+
+    fclose(file);
+
     stackSize = 0;
     queueSize = 0;
 
     app = gtk_application_new ("stackof.holger.entry", G_APPLICATION_DEFAULT_FLAGS);
 
     g_signal_connect (app, "activate", G_CALLBACK (on_activate), NULL);
+    g_signal_connect(app, "shutdown", G_CALLBACK(on_app_shutdown), NULL);
+
     status = g_application_run (G_APPLICATION (app), argc, argv);
     g_object_unref (app);
 
