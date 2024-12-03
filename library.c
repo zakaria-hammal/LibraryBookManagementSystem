@@ -1074,7 +1074,7 @@ int main(int argc, char* argv[])
 
     g_signal_connect (app, "activate", G_CALLBACK (on_activate), NULL);
     g_signal_connect(app, "shutdown", G_CALLBACK(on_app_shutdown), NULL);
-
+    
     status = g_application_run (G_APPLICATION (app), argc, argv);
     g_object_unref (app);
 
