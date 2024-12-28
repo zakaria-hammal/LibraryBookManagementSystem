@@ -1,8 +1,0 @@
-{
-    "files.associations": {
-        "array": "c",
-        "string_view": "c",
-        "span": "c",
-        "books.h": "c"
-    }
-}
