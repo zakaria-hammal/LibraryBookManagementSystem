@@ -1,6 +1,7 @@
 # GTK4 C Program
 
 A Simple Library Mangement Program for school project created in C using GTK4 for the graphical user interface (GUI).
+
 ---
 
 ## Prerequisites
@@ -19,4 +20,4 @@ gcc $(pkg-config --cflags gtk4) -o prog library.c stack.c queue.c $(pkg-config -
 
 After compiling, run the program with:
 ```bash
-./prog
+./prog  
